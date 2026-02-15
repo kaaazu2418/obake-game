@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>対戦ゲーム 完全完成版</title>
+<style>
+body{
+  margin:0;
+  background:#eee;
+  font-family:sans-serif;
+  text-align:center;
+}
+
+#startScreen{
+  position:fixed;
+  inset:0;
+  background:#222;
+  color:white;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  z-index:10;
+}
+
+#startScreen button{
+  font-size:28px;
+  padding:15px 30px;
+  margin-top:20px;
+}
+
+#board{
+  height:170px;
+  border:4px solid black;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  background:#ddd;
+}
+
+.cardRow{
+  display:flex;
+  gap:60px;
+}
+
+#result{
+  font-size:26px;
+  height:40px;
+}
+
+#restartArea{
+  margin-top:10px;
+}
+
+.container{
+  display:flex;
+  justify-content:space-between;
+  padding:20px 60px;
+}
+
+.player{ width:40%; }
+
+.items{
+  display:flex;
+  justify-content:space-around;
+  margin-top:15px;
+}
+
+button{
+  padding:6px;
+  background:white;
+  border:2px solid #333;
+  border-radius:8px;
+}
+
+.score{
+  font-size:28px;
+}
+
+.key{
+  font-size:14px;
+}
+
+.win{
+  font-size:40px;
+  color:red;
+}
+
+svg{
+  width:70px;
+  height:70px;
+}
+</style>
+</head>
+<body>
+
+<div id="startScreen">
+  <h1>対戦ゲーム</h1>
+  <p>10点先取で勝利！</p>
+  <button onclick="startGame()">START</button>
+</div>
+
+<div id="board">
+  <div class="cardRow" id="cardArea"></div>
+</div>
+
+<div id="result"></div>
+<div id="restartArea"></div>
+
+<div class="container">
+  <div class="player">
+    <div class="score" id="score1">1P (0)</div>
+    <div class="items" id="p1"></div>
+  </div>
+  <div class="player">
+    <div class="score" id="score2">2P (0)</div>
+    <div class="items" id="p2"></div>
+  </div>
+</div>
+
+<script>
+
+const items = [
+  {name:"apple", color:"red"},
+  {name:"dog", color:"brown"},
+  {name:"cat", color:"yellow"},
+  {name:"hat", color:"black"},
+  {name:"car", color:"blue"}
+];
+
+const keys1=["q","w","e","r","t"];
+const keys2=["y","u","i","o","p"];
+
+let score1=0, score2=0;
+let correctItem=null;
+let gameActive=false;
+
+/* 効果音 */
+const correctSound = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
+const wrongSound   = new Audio("https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg");
+
+/* ===== スタート ===== */
+function startGame(){
+  document.getElementById("startScreen").style.display="none";
+  restartGame();
+}
+
+/* ===== リスタート ===== */
+function restartGame(){
+  score1=0;
+  score2=0;
+  correctItem=null;
+  gameActive=true;
+
+  document.getElementById("result").innerText="";
+  document.getElementById("restartArea").innerHTML="";
+
+  updateScore();
+  generateCard();
+}
+
+/* ===== スコア更新 ===== */
+function updateScore(){
+  document.getElementById("score1").innerText=`1P (${score1})`;
+  document.getElementById("score2").innerText=`2P (${score2})`;
+
+  if(score1>=10){
+    endGame("1P WIN!!");
+  }
+  if(score2>=10){
+    endGame("2P WIN!!");
+  }
+}
+
+/* ===== 終了処理 ===== */
+function endGame(message){
+  gameActive=false;
+
+  document.getElementById("result").innerHTML=
+    `<div class='win'>${message}</div>`;
+
+  document.getElementById("restartArea").innerHTML=
+    `<button onclick="restartGame()" style="font-size:22px;">もう一回</button>`;
+}
+
+/* ===== カード生成（正解1つ保証） ===== */
+function generateCard(){
+  if(!gameActive) return;
+
+  document.getElementById("result").innerText="";
+  const area=document.getElementById("cardArea");
+  area.innerHTML="";
+
+  while(true){
+    const shuffled=[...items].sort(()=>Math.random()-0.5);
+    const pair=[ {...shuffled[0]}, {...shuffled[1]} ];
+
+    pair.forEach(p=>{
+      p.displayColor = items[Math.floor(Math.random()*items.length)].color;
+    });
+
+    const usedNames=pair.map(p=>p.name);
+    const usedColors=pair.map(p=>p.displayColor);
+
+    const matches=items.filter(i =>
+      pair.some(p=>p.name===i.name && p.displayColor===i.color)
+    );
+
+    if(matches.length===1){
+      correctItem=matches[0];
+    }else if(matches.length===0){
+      const candidates=items.filter(i =>
+        !usedNames.includes(i.name) &&
+        !usedColors.includes(i.color)
+      );
+      if(candidates.length===1){
+        correctItem=candidates[0];
+      }else continue;
+    }else continue;
+
+    pair.forEach(p=>{
+      area.appendChild(makeSVG(p.name,p.displayColor));
+    });
+
+    break;
+  }
+}
+
+/* ===== SVG描画 ===== */
+function makeSVG(type,color){
+  const div=document.createElement("div");
+  let svg=`<svg viewBox="0 0 100 100">`;
+
+  if(type==="apple"){
+    svg+=`
+      <circle cx="50" cy="55" r="30" fill="${color}"/>
+      <rect x="47" y="15" width="6" height="20" fill="green"/>
+      <ellipse cx="65" cy="20" rx="12" ry="6" fill="green"/>
+    `;
+  }
+
+  if(type==="dog"){
+    svg+=`
+      <circle cx="50" cy="50" r="25" fill="${color}"/>
+      <circle cx="35" cy="35" r="10" fill="${color}"/>
+      <circle cx="65" cy="35" r="10" fill="${color}"/>
+      <circle cx="50" cy="55" r="5" fill="black"/>
+    `;
+  }
+
+  if(type==="cat"){
+    svg+=`
+      <circle cx="50" cy="55" r="25" fill="${color}"/>
+      <polygon points="30,30 40,10 50,30" fill="${color}"/>
+      <polygon points="70,30 60,10 50,30" fill="${color}"/>
+    `;
+  }
+
+  if(type==="hat"){
+    svg+=`
+      <rect x="30" y="40" width="40" height="25" fill="${color}"/>
+      <rect x="20" y="65" width="60" height="10" fill="${color}"/>
+    `;
+  }
+
+  if(type==="car"){
+    svg+=`
+      <rect x="25" y="50" width="50" height="20" fill="${color}"/>
+      <circle cx="40" cy="75" r="8" fill="black"/>
+      <circle cx="60" cy="75" r="8" fill="black"/>
+    `;
+  }
+
+  svg+=`</svg>`;
+  div.innerHTML=svg;
+  return div;
+}
+
+/* ===== 判定 ===== */
+function handlePress(player,item){
+  if(!gameActive) return;
+
+  if(item.name===correctItem.name){
+    correctSound.play();
+    if(player===1) score1++;
+    else score2++;
+  }else{
+    wrongSound.play();
+    if(player===1) score2++;
+    else score1++;
+  }
+
+  updateScore();
+  if(gameActive) generateCard();
+}
+
+/* ===== ボタン生成 ===== */
+function setupButtons(){
+  const p1=document.getElementById("p1");
+  const p2=document.getElementById("p2");
+
+  items.forEach((item,i)=>{
+
+    const b1=document.createElement("button");
+    b1.appendChild(makeSVG(item.name,item.color));
+    b1.innerHTML+=`<div class="key">${keys1[i].toUpperCase()}</div>`;
+    b1.onclick=()=>handlePress(1,item);
+    p1.appendChild(b1);
+
+    const b2=document.createElement("button");
+    b2.appendChild(makeSVG(item.name,item.color));
+    b2.innerHTML+=`<div class="key">${keys2[i].toUpperCase()}</div>`;
+    b2.onclick=()=>handlePress(2,item);
+    p2.appendChild(b2);
+  });
+
+  document.addEventListener("keydown",e=>{
+    const k=e.key.toLowerCase();
+    if(keys1.includes(k)){
+      handlePress(1,items[keys1.indexOf(k)]);
+    }
+    if(keys2.includes(k)){
+      handlePress(2,items[keys2.indexOf(k)]);
+    }
+  });
+}
+
+setupButtons();
+
+</script>
+</body>
+</html>
